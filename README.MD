@@ -1,5 +1,7 @@
 # SSD Test
 
+![ssd-test](https://user-images.githubusercontent.com/20717116/207364177-61609f68-d09b-49c9-9946-a2eac00c643c.png)
+
 This is a simple test to check the write speed of your SSD.
 
 Because SSD have a small amount of RAM to cache the data,
@@ -19,4 +21,3 @@ Then it will delete the file.
 go run github.com/openhoangnc/ssd-test@latest
 ```
 
-![ssd-test](https://user-images.githubusercontent.com/20717116/207362363-afa4d55d-d186-40f2-94c4-2898f1b3b56a.png)
