@@ -16,7 +16,7 @@ Then it will delete the file.
 ## Usage
 
 ```bash
-go run github.com/openhoangnc/ssd-test
+go run github.com/openhoangnc/ssd-test@latest
 ```
 
 ![ssd-test](https://user-images.githubusercontent.com/20717116/207362363-afa4d55d-d186-40f2-94c4-2898f1b3b56a.png)
