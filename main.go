@@ -44,7 +44,7 @@ func main() {
 		fmt.Println("\nCleaning up...")
 		f.Close()
 		os.Remove(filename)
-		fmt.Println("\nRemoved file", filename)
+		fmt.Println("Removed file", filename)
 	}
 
 	fmt.Printf("Writing %s to %s\n", formatBytes(fileSize), filename)
@@ -63,7 +63,7 @@ func main() {
 		stopped = true
 	}()
 
-	randData := make([]byte, 256*1024*1024)
+	randData := make([]byte, 1*1024*1024)
 	rand.Read(randData)
 
 	totalWritten := int64(0)
@@ -86,18 +86,18 @@ func main() {
 			break
 		}
 
-		if err := f.Sync(); err != nil {
-			fmt.Println("\nError syncing file:", err)
-			break
-		}
-
 		totalWritten += int64(written)
 		blockWritten += int64(written)
 
-		totalElapsed := time.Since(writeStart)
-		blockElapsed := time.Since(blockStart)
+		if time.Since(blockStart) > 1*time.Second {
+			if err := f.Sync(); err != nil {
+				fmt.Println("\nError syncing file:", err)
+				break
+			}
 
-		if blockElapsed > 1*time.Second {
+			totalElapsed := time.Since(writeStart)
+			blockElapsed := time.Since(blockStart)
+
 			blockSpeed := float64(blockWritten) / blockElapsed.Seconds()
 			if blockSpeed > maxSpeed {
 				maxSpeed = blockSpeed
