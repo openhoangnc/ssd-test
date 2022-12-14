@@ -73,7 +73,7 @@ func main() {
 	maxSpeed := 0.0
 
 	for {
-		if stopped {
+		if stopped || totalWritten >= fileSize {
 			break
 		}
 
