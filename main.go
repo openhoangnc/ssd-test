@@ -6,10 +6,31 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
 func main() {
+
+	// check disk free space
+	fs := syscall.Statfs_t{}
+	err := syscall.Statfs(".", &fs)
+	if err != nil {
+		panic(err)
+	}
+
+	diskSize := fs.Blocks * uint64(fs.Bsize)
+	fmt.Printf("Disk size: %s\n", formatBytes(int64(diskSize)))
+
+	freeSpace := fs.Bavail * uint64(fs.Bsize)
+	fmt.Printf("Free space: %s\n", formatBytes(int64(freeSpace)))
+
+	fileSize := int64(freeSpace) - int64(diskSize/100) // leave 1% free
+	if fileSize < 0 {
+		fmt.Printf("Not enough free space, need at least %s\n", formatBytes(int64(diskSize)/100))
+		return
+	}
+
 	randBytes := make([]byte, 8)
 	rand.Read(randBytes)
 	filename := fmt.Sprintf("disk-test-%x.tmp", randBytes)
@@ -18,12 +39,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Writing to %s\n", filename)
 
 	cleanup := func() {
+		fmt.Println("\nCleaning up...")
 		f.Close()
 		os.Remove(filename)
 		fmt.Println("\nRemoved file", filename)
+	}
+
+	fmt.Printf("Writing %s to %s\n", formatBytes(fileSize), filename)
+	if err := f.Truncate(fileSize); err != nil {
+		fmt.Printf("Error allocating file %s with size %s: %s\n", filename, formatBytes(fileSize), err)
+		cleanup()
+		return
 	}
 
 	// handle signals
@@ -35,7 +63,7 @@ func main() {
 		stopped = true
 	}()
 
-	randData := make([]byte, 1*1024*1024)
+	randData := make([]byte, 256*1024*1024)
 	rand.Read(randData)
 
 	totalWritten := int64(0)
@@ -48,13 +76,21 @@ func main() {
 		if stopped {
 			break
 		}
+
 		written, err := f.Write(randData)
+
 		if err != nil {
 			if !strings.Contains(err.Error(), "no space left on device") {
 				fmt.Println("\nError writing to file:", err)
 			}
 			break
 		}
+
+		if err := f.Sync(); err != nil {
+			fmt.Println("\nError syncing file:", err)
+			break
+		}
+
 		totalWritten += int64(written)
 		blockWritten += int64(written)
 
