@@ -39,7 +39,7 @@ func main() {
 
 	randBytes := make([]byte, 8)
 	rand.Read(randBytes)
-	filename := fmt.Sprintf("disk-test-%x.tmp", randBytes)
+	filename := fmt.Sprintf("ssd-test-%x.tmp", randBytes)
 
 	f, err := os.Create(filename)
 	if err != nil {
@@ -62,7 +62,7 @@ func main() {
 
 	// handle signals
 	sign := make(chan os.Signal, 1)
-	signal.Notify(sign, os.Interrupt, os.Kill)
+	signal.Notify(sign, os.Interrupt, syscall.SIGTERM)
 	stopped := false
 	go func() {
 		<-sign
@@ -78,6 +78,7 @@ func main() {
 	blockStart := time.Now()
 	maxSpeed := 0.0
 
+	firstWrite := true
 	for {
 		if stopped || totalWritten >= fileSize {
 			break
@@ -109,12 +110,21 @@ func main() {
 				maxSpeed = blockSpeed
 			}
 			avgSpeed := float64(totalWritten) / totalElapsed.Seconds()
-			fmt.Printf("\rWrote %s in %s (avg %s/s) (current %s/s) (max %s/s)      ",
-				formatBytes(totalWritten), formatDuration(totalElapsed),
-				formatBytes(int64(avgSpeed)),
-				formatBytes(int64(blockSpeed)),
-				formatBytes(int64(maxSpeed)),
-			)
+
+			s := "" +
+				"Written size  : " + padStr(formatBytes(totalWritten)) + "\n" +
+				"Elapsed time  : " + padStr(formatDuration(totalElapsed)) + "\n" +
+				"Average speed : " + padStr(formatBytes(int64(avgSpeed))) + "/s\n" +
+				"Current speed : " + padStr(formatBytes(int64(blockSpeed))) + "/s\n" +
+				"Max speed     : " + padStr(formatBytes(int64(maxSpeed))) + "/s\n"
+
+			if firstWrite {
+				firstWrite = false
+			} else {
+				fmt.Printf("\033[%dA", strings.Count(s, "\n"))
+			}
+			fmt.Print(s)
+
 			blockWritten = 0
 			blockStart = time.Now()
 		}
@@ -123,24 +133,30 @@ func main() {
 	cleanup()
 }
 
+func padStr(s string) string {
+	return fmt.Sprintf("%10s", s)
+}
+
 func formatBytes(bytes int64) string {
 	if bytes < 1024 {
-		return fmt.Sprintf("%dB", bytes)
+		return fmt.Sprintf("%d  B", bytes)
 	} else if bytes < 1024*1024 {
-		return fmt.Sprintf("%.2fKB", float64(bytes)/1024)
+		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
 	} else if bytes < 1024*1024*1024 {
-		return fmt.Sprintf("%.2fMB", float64(bytes)/(1024*1024))
+		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
+	} else if bytes < 1024*1024*1024*1024 {
+		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
 	} else {
-		return fmt.Sprintf("%.2fGB", float64(bytes)/(1024*1024*1024))
+		return fmt.Sprintf("%.2f TB", float64(bytes)/(1024*1024*1024*1024))
 	}
 }
 
 func formatDuration(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%dms", d/time.Millisecond)
+		return fmt.Sprintf("%d ms", d/time.Millisecond)
 	} else if d < time.Minute {
-		return fmt.Sprintf("%.2fs", float64(d)/float64(time.Second))
+		return fmt.Sprintf("%.2f s ", float64(d)/float64(time.Second))
 	} else {
-		return fmt.Sprintf("%.2fm", float64(d)/float64(time.Minute))
+		return fmt.Sprintf("%.2f m ", float64(d)/float64(time.Minute))
 	}
 }
