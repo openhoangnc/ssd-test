@@ -1,6 +1,6 @@
 # SSD Test
 
-![ssd-test](https://user-images.githubusercontent.com/20717116/207364177-61609f68-d09b-49c9-9946-a2eac00c643c.png)
+![ssd-test](https://user-images.githubusercontent.com/20717116/207495720-ffb9c971-edf7-4f8a-97bb-e3a87c7e514b.png)
 
 This is a simple test to check the write speed of your SSD.
 
@@ -18,6 +18,6 @@ Then it will delete the file.
 ## Usage
 
 ```bash
-go run github.com/openhoangnc/ssd-test@latest
+go run github.com/openhoangnc/ssd-test@v1.0.1
 ```
 
