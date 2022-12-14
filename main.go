@@ -25,9 +25,15 @@ func main() {
 	freeSpace := fs.Bavail * uint64(fs.Bsize)
 	fmt.Printf("Free space: %s\n", formatBytes(int64(freeSpace)))
 
-	fileSize := int64(freeSpace) - int64(diskSize/100) // leave 1% free
+	// leave 1% free space, max 1GB
+	leaveSpace := diskSize / 100
+	if leaveSpace > 1024*1024*1024 {
+		leaveSpace = 1024 * 1024 * 1024
+	}
+
+	fileSize := int64(freeSpace) - int64(leaveSpace)
 	if fileSize < 0 {
-		fmt.Printf("Not enough free space, need at least %s\n", formatBytes(int64(diskSize)/100))
+		fmt.Printf("Not enough free space, need at least %s\n", formatBytes(int64(leaveSpace)))
 		return
 	}
 
