@@ -18,5 +18,5 @@ Then it will delete the file.
 ## Usage
 
 ```bash
-go run github.com/openhoangnc/ssd-test@v1.0.4
+go run github.com/openhoangnc/ssd-test@latest
 ```
