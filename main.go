@@ -141,22 +141,22 @@ func formatBytes(bytes int64) string {
 	if bytes < 1024 {
 		return fmt.Sprintf("%d  B", bytes)
 	} else if bytes < 1024*1024 {
-		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
+		return fmt.Sprintf("%.2f KiB", float64(bytes)/1024)
 	} else if bytes < 1024*1024*1024 {
-		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
+		return fmt.Sprintf("%.2f MiB", float64(bytes)/(1024*1024))
 	} else if bytes < 1024*1024*1024*1024 {
-		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
+		return fmt.Sprintf("%.2f GiB", float64(bytes)/(1024*1024*1024))
 	} else {
-		return fmt.Sprintf("%.2f TB", float64(bytes)/(1024*1024*1024*1024))
+		return fmt.Sprintf("%.2f TiB", float64(bytes)/(1024*1024*1024*1024))
 	}
 }
 
 func formatDuration(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%d ms", d/time.Millisecond)
+		return fmt.Sprintf("%d ms ", d/time.Millisecond)
 	} else if d < time.Minute {
-		return fmt.Sprintf("%.2f s ", float64(d)/float64(time.Second))
+		return fmt.Sprintf("%.2f s  ", float64(d)/float64(time.Second))
 	} else {
-		return fmt.Sprintf("%.2f m ", float64(d)/float64(time.Minute))
+		return fmt.Sprintf("%.2f m  ", float64(d)/float64(time.Minute))
 	}
 }
