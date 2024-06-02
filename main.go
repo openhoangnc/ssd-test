@@ -11,18 +11,10 @@ import (
 )
 
 func main() {
+	diskSize, freeSpace := getDiskStats(".")
 
-	// check disk free space
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(".", &fs)
-	if err != nil {
-		panic(err)
-	}
-
-	diskSize := fs.Blocks * uint64(fs.Bsize)
 	fmt.Printf("Disk size: %s\n", formatBytes(int64(diskSize)))
 
-	freeSpace := fs.Bavail * uint64(fs.Bsize)
 	fmt.Printf("Free space: %s\n", formatBytes(int64(freeSpace)))
 
 	// leave 1% free space, max 1GB
