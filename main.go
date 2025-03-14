@@ -126,7 +126,7 @@ func performWriteTest(f *os.File, fileSize int64, randData []byte, stopChan <-ch
 
 			// Only update progress if no signal has been received
 			if time.Since(blockStart) > 1*time.Second && !*signalReceived {
-				updateProgress(f, totalWritten, blockWritten, writeStart,
+				updateProgress(f, totalWritten, blockWritten, fileSize, writeStart,
 					blockStart, &maxSpeed, &firstWrite)
 				blockWritten = 0
 				blockStart = time.Now()
@@ -136,7 +136,7 @@ func performWriteTest(f *os.File, fileSize int64, randData []byte, stopChan <-ch
 }
 
 // updateProgress displays the current test progress
-func updateProgress(f *os.File, totalWritten, blockWritten int64,
+func updateProgress(f *os.File, totalWritten, blockWritten, fileSize int64,
 	writeStart, blockStart time.Time, maxSpeed *float64, firstWrite *bool) {
 
 	if err := f.Sync(); err != nil {
@@ -153,12 +153,28 @@ func updateProgress(f *os.File, totalWritten, blockWritten int64,
 	}
 	avgSpeed := float64(totalWritten) / totalElapsed.Seconds()
 
+	// Calculate estimated time remaining
+	var etaStr string
+	if avgSpeed > 0 {
+		remaining := fileSize - totalWritten
+		etaSeconds := float64(remaining) / avgSpeed
+		eta := time.Duration(etaSeconds * float64(time.Second))
+		etaStr = formatDuration(eta)
+	} else {
+		etaStr = "Calculating..."
+	}
+
+	// Calculate percentage complete
+	percentComplete := float64(totalWritten) / float64(fileSize) * 100
+
 	s := "" +
-		"Written size  : " + padStr(formatBytes(totalWritten)) + "\n" +
+		"Written size  : " + padStr(formatBytes(totalWritten)) +
+		" (" + padStr(fmt.Sprintf("%.1f%%", percentComplete), 6) + ")\n" +
 		"Elapsed time  : " + padStr(formatDuration(totalElapsed)) + "\n" +
+		"ETA           : " + padStr(etaStr) + "\n" +
+		"Max speed     : " + padStr(formatBytes(int64(*maxSpeed))) + "/s\n" +
 		"Average speed : " + padStr(formatBytes(int64(avgSpeed))) + "/s\n" +
-		"Current speed : " + padStr(formatBytes(int64(blockSpeed))) + "/s\n" +
-		"Max speed     : " + padStr(formatBytes(int64(*maxSpeed))) + "/s\n"
+		"Current speed : " + padStr(formatBytes(int64(blockSpeed))) + "/s\n"
 
 	if *firstWrite {
 		*firstWrite = false
@@ -168,8 +184,12 @@ func updateProgress(f *os.File, totalWritten, blockWritten int64,
 	fmt.Print(s)
 }
 
-func padStr(s string) string {
-	return fmt.Sprintf("%12s", s)
+func padStr(s string, size ...int) string {
+	if len(size) > 0 {
+		return fmt.Sprintf("%*s", size[0], s)
+	}
+
+	return fmt.Sprintf("%11s", s)
 }
 
 func formatBytes(bytes int64) string {
