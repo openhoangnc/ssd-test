@@ -169,7 +169,7 @@ func updateProgress(f *os.File, totalWritten, blockWritten int64,
 }
 
 func padStr(s string) string {
-	return fmt.Sprintf("%10s", s)
+	return fmt.Sprintf("%12s", s)
 }
 
 func formatBytes(bytes int64) string {
