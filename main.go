@@ -235,6 +235,10 @@ func runInline(ctx context.Context, dir string, fileSize int64, sys hwinfo.Syste
 			format.Bytes(sys.DiskSizeBytes), format.Bytes(sys.DiskFreeBytes))
 		fmt.Printf("Test:     writing %s to %s\n", format.Bytes(fileSize), dir)
 		fmt.Println()
+		fmt.Fprintln(os.Stderr, "Warning: sustained writes consume SSD endurance (TBW).")
+		fmt.Fprintln(os.Stderr, "A single run is fine on a healthy drive, but don't loop this")
+		fmt.Fprintln(os.Stderr, "test or run it on small/cheap/worn SSDs you want to keep.")
+		fmt.Fprintln(os.Stderr)
 	}
 
 	samples, resultCh, err := bench.Run(ctx, bench.Options{Dir: dir, FileSize: fileSize})

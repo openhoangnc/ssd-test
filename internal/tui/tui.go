@@ -156,6 +156,10 @@ func confirmBody(chartH int, f Frame) []string {
 			cyan, f.Dir, resetStyle),
 		"  and remove the file when finished. Ctrl+C cancels at any time.",
 		"",
+		fmt.Sprintf("  %s⚠ Heads up:%s sustained writes consume SSD endurance (TBW).", red+bold, resetStyle),
+		"  A single run is fine on a healthy drive; don't loop this test or",
+		"  run it on small, cheap, or already-worn SSDs you want to keep.",
+		"",
 	}
 	for len(lines) < chartH {
 		lines = append(lines, "")

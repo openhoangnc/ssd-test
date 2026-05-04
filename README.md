@@ -4,6 +4,9 @@ A small, single-binary tool to measure the **sustained** write speed of your SSD
 
 <img width="573" height="336" alt="image" src="https://github.com/user-attachments/assets/53554672-efaf-40d6-b5f5-5f33cbc1c75f" />
 
+> [!WARNING]
+> **This test writes a lot of data and consumes SSD endurance.** Every run fills your free space (or the size you pick) with random data, which counts against the drive's finite write-cycle budget (TBW). On a healthy modern SSD a single run is negligible, but running it repeatedly — especially on small, cheap, or already-worn drives — will measurably shorten its lifespan. Don't loop it, and avoid running it on drives you can't afford to retire early.
+
 ## Quick start
 
 Run it (caches the binary for 24h, no $PATH changes):
