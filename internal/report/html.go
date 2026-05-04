@@ -6,12 +6,14 @@ import (
 	"html/template"
 	"time"
 
+	"github.com/openhoangnc/ssd-test/internal/bench"
 	"github.com/openhoangnc/ssd-test/internal/format"
 )
 
 // HTML renders a self-contained HTML report (inline CSS, inline SVG). The
 // caller can write the result directly to a .html file.
 func HTML(r Result) (string, error) {
+	cache := bench.EstimateCache(r.Bench.Samples)
 	tpl, err := template.New("report").Funcs(template.FuncMap{
 		"bytes":    func(b int64) string { return format.Bytes(b) },
 		"bytesps":  func(f float64) string { return format.BytesPerSec(f) },
@@ -26,7 +28,11 @@ func HTML(r Result) (string, error) {
 		return "", fmt.Errorf("parse template: %w", err)
 	}
 	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, r); err != nil {
+	data := struct {
+		Result
+		Cache bench.CacheEstimate
+	}{r, cache}
+	if err := tpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 	return buf.String(), nil
@@ -80,6 +86,7 @@ a{color:var(--accent)}
     <div class="stat bad"><div class="k">Min</div><div class="v">{{bytesps .Bench.Min}}</div></div>
     <div class="stat"><div class="k">Written</div><div class="v">{{bytes .Bench.Written}}</div></div>
     <div class="stat"><div class="k">Duration</div><div class="v">{{duration .Bench.Duration}}</div></div>
+    {{if .Cache.Detected}}<div class="stat warn" title="Approximate fast-cache (SLC/DRAM) capacity, inferred from the speed cliff."><div class="k">Cache estimate</div><div class="v">~{{bytes .Cache.Bytes}}</div></div>{{end}}
   </div>
 
   <div class="card chart-card">

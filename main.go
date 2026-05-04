@@ -133,12 +133,14 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 		return err
 	}
 	history := make([]float64, 0, 600)
+	collected := make([]bench.Sample, 0, 600)
 	var maxSpeed, minSpeed float64
 	haveMin := false
 	var lastSample bench.Sample
 
 	for s := range samples {
 		history = append(history, s.BlockSpeed)
+		collected = append(collected, s)
 		if s.BlockSpeed > maxSpeed {
 			maxSpeed = s.BlockSpeed
 		}
@@ -156,6 +158,7 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 			History:  history,
 			Min:      minSpeed,
 			Max:      maxSpeed,
+			Cache:    bench.EstimateCache(collected),
 		})
 	}
 	bres := <-resultCh
@@ -182,6 +185,8 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 		}
 	}
 
+	cache := bench.EstimateCache(bres.Samples)
+
 	// 3. Action loop.
 	for {
 		screen.Render(tui.Frame{
@@ -195,6 +200,7 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 			Max:      maxSpeed,
 			Result:   bres,
 			Status:   status,
+			Cache:    cache,
 		})
 		if !waitForKey(ctx, "cChHqQ\x03") {
 			return nil
@@ -425,6 +431,12 @@ func printSummary(r report.Result) {
 		format.BytesPerSec(r.Bench.Min),
 		format.BytesPerSec(r.Bench.Avg),
 		format.BytesPerSec(r.Bench.Max))
+	if cache := bench.EstimateCache(r.Bench.Samples); cache.Detected {
+		fmt.Printf("Cache:    ~%s (burst %s → steady %s)\n",
+			format.Bytes(cache.Bytes),
+			format.BytesPerSec(cache.BurstSpeed),
+			format.BytesPerSec(cache.SteadySpeed))
+	}
 	if r.Bench.Cancelled {
 		fmt.Println("Status:   cancelled before completion")
 	}

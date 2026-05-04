@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openhoangnc/ssd-test/internal/bench"
 	"github.com/openhoangnc/ssd-test/internal/format"
 )
 
@@ -52,10 +53,12 @@ func SVG(r Result) string {
 .line{fill:none;stroke:var(--line,#58a6ff);stroke-width:2;stroke-linejoin:round}
 .area{fill:var(--area,rgba(88,166,255,0.18));stroke:none}
 .avg{stroke:var(--avg,#3fb950);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+.cache{stroke:var(--cache,#d29922);stroke-width:1.5;stroke-dasharray:6 4;fill:none}
+.cache-label{fill:var(--cache,#d29922);font:600 12px ui-sans-serif,system-ui,sans-serif}
 @media (prefers-color-scheme: light){
   .bg{fill:#ffffff}.grid{stroke:#e1e4e8}.axis{stroke:#57606a}
   .label,.title{fill:#1f2328}.line{stroke:#0969da}.area{fill:rgba(9,105,218,0.16)}
-  .avg{stroke:#1a7f37}
+  .avg{stroke:#1a7f37}.cache{stroke:#9a6700}.cache-label{fill:#9a6700}
 }
 </style>`)
 	fmt.Fprintf(&b, `<rect class="bg" width="%d" height="%d"/>`, W, H)
@@ -111,6 +114,20 @@ func SVG(r Result) string {
 			padL, ay, padL+plotW, ay)
 		fmt.Fprintf(&b, `<text class="label" x="%d" y="%.2f">avg %s</text>`,
 			padL+plotW-90, ay-6, format.BytesPerSec(r.Bench.Avg))
+
+		if cache := bench.EstimateCache(r.Bench.Samples); cache.Detected {
+			cx := x(cache.Bytes)
+			fmt.Fprintf(&b, `<line class="cache" x1="%.2f" y1="%d" x2="%.2f" y2="%d"/>`,
+				cx, padT, cx, padT+plotH)
+			anchor := "start"
+			tx := cx + 6
+			if cx > float64(padL+plotW)-120 {
+				anchor = "end"
+				tx = cx - 6
+			}
+			fmt.Fprintf(&b, `<text class="cache-label" x="%.2f" y="%d" text-anchor="%s">cache ~%s</text>`,
+				tx, padT+14, anchor, format.Bytes(cache.Bytes))
+		}
 	}
 
 	b.WriteString(`</svg>`)

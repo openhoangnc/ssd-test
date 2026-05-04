@@ -67,8 +67,9 @@ type Frame struct {
 	Min      float64
 	Max      float64
 	// PhaseDone fields:
-	Result   bench.Result
-	Status   string // ephemeral status line ("Copied to clipboard", "Saved to ...")
+	Result bench.Result
+	Status string // ephemeral status line ("Copied to clipboard", "Saved to ...")
+	Cache  bench.CacheEstimate
 }
 
 func (s *Screen) Render(f Frame) {
@@ -104,6 +105,9 @@ func (s *Screen) Render(f Frame) {
 	// Chart pane fills remaining vertical space.
 	headerH := 6
 	metricsH := 5
+	if f.Cache.Detected {
+		metricsH = 6
+	}
 	footerH := 1
 	chartH := rows - headerH - metricsH - footerH
 	if chartH < 4 {
@@ -185,7 +189,7 @@ func runningMetrics(f Frame) []string {
 		status = green + "✓ Test complete." + resetStyle
 	}
 
-	return []string{
+	lines := []string{
 		fmt.Sprintf("Written  %s%s%s  (%s%.1f%%%s)   ETA  %s%s%s",
 			green, format.Bytes(written), resetStyle,
 			yellow, pct, resetStyle,
@@ -197,8 +201,15 @@ func runningMetrics(f Frame) []string {
 			green, format.BytesPerSec(f.Max), resetStyle,
 			red, format.BytesPerSec(f.Min), resetStyle,
 			format.Duration(f.Sample.Elapsed)),
-		status,
 	}
+	if f.Cache.Detected {
+		lines = append(lines, fmt.Sprintf("Cache    %s~%s%s   (burst %s → steady %s)",
+			yellow, format.Bytes(f.Cache.Bytes), resetStyle,
+			format.BytesPerSec(f.Cache.BurstSpeed),
+			format.BytesPerSec(f.Cache.SteadySpeed)))
+	}
+	lines = append(lines, status)
+	return lines
 }
 
 func footerFor(f Frame) string {

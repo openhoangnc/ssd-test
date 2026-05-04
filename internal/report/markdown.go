@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openhoangnc/ssd-test/internal/bench"
 	"github.com/openhoangnc/ssd-test/internal/format"
 )
 
@@ -27,6 +28,12 @@ func Markdown(r Result) string {
 		format.BytesPerSec(r.Bench.Min),
 		format.BytesPerSec(r.Bench.Avg),
 		format.BytesPerSec(r.Bench.Max))
+	if cache := bench.EstimateCache(r.Bench.Samples); cache.Detected {
+		fmt.Fprintf(&b, "- Cache estimate: ~%s (burst %s → steady %s)\n",
+			format.Bytes(cache.Bytes),
+			format.BytesPerSec(cache.BurstSpeed),
+			format.BytesPerSec(cache.SteadySpeed))
+	}
 	if r.Bench.Cancelled {
 		fmt.Fprintln(&b, "- _Cancelled before completion._")
 	}
