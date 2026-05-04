@@ -78,4 +78,8 @@ if [ "${INSTALL:-0}" = "1" ]; then
   exit 0
 fi
 
-exec "$EXE" "$@"
+if [ ! -t 0 ] && [ -r /dev/tty ]; then
+  exec "$EXE" "$@" </dev/tty
+else
+  exec "$EXE" "$@"
+fi
