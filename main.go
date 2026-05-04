@@ -32,7 +32,7 @@ func main() {
 	var (
 		path     = flag.String("path", ".", "directory to test on")
 		sizeFlag = flag.String("size", "auto", "test size (auto, 200M, 2G, 50%)")
-		output   = flag.String("output", "", "write report to this file (.html or .png)")
+		output   = flag.String("output", "", "write report to this file (.html, .svg, or .md)")
 		copyOut  = flag.Bool("copy", false, "copy a Markdown summary to the clipboard")
 		simple   = flag.Bool("simple", false, "use inline output instead of full-screen TUI")
 		jsonOut  = flag.Bool("json", false, "emit JSON result to stdout (implies --simple)")
@@ -81,7 +81,7 @@ func run(ctx context.Context, dir, sizeArg, output string, copyOut, simple, json
 	if jsonOut {
 		simple = true
 	}
-	useTUI := !simple && tui.IsTTY()
+	useTUI := !simple && tui.IsTTY() && stdinIsTTY()
 
 	sys := hwinfo.Collect(dir)
 	fileSize, err := computeSize(sizeArg, sys.DiskFreeBytes, sys.DiskSizeBytes)
@@ -92,32 +92,50 @@ func run(ctx context.Context, dir, sizeArg, output string, copyOut, simple, json
 		return errors.New("not enough free space for a meaningful test")
 	}
 
-	if !useTUI && !jsonOut {
-		fmt.Printf("Device:   %s\n", dashIfEmpty(sys.DiskModel))
-		fmt.Printf("Disk:     %s total, %s free\n",
-			format.Bytes(sys.DiskSizeBytes), format.Bytes(sys.DiskFreeBytes))
-		fmt.Printf("Test:     writing %s to %s\n",
-			format.Bytes(fileSize), dir)
-		fmt.Println()
+	if useTUI {
+		return runTUI(ctx, dir, fileSize, sys, output, copyOut)
+	}
+	return runInline(ctx, dir, fileSize, sys, output, copyOut, jsonOut)
+}
+
+// runTUI is the interactive flow: alt-screen + raw input, with a confirmation
+// step before the test starts and an action menu after it completes.
+func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemInfo, output string, copyOut bool) error {
+	raw, err := tui.EnterRaw()
+	if err != nil {
+		return fmt.Errorf("raw mode: %w", err)
+	}
+	defer raw.Restore()
+
+	screen := tui.Enter(os.Stdout)
+	defer screen.Restore()
+
+	// 1. Confirm screen.
+	confirmFrame := tui.Frame{
+		Phase:    tui.PhaseConfirm,
+		Sys:      sys,
+		Dir:      dir,
+		FileSize: fileSize,
+	}
+	screen.Render(confirmFrame)
+	if !waitForKey(ctx, "\r\nqQ") {
+		return nil
+	}
+	if lastKey == 'q' || lastKey == 'Q' {
+		return nil
 	}
 
+	// 2. Run the bench loop, redrawing on each sample.
 	samples, resultCh, err := bench.Run(ctx, bench.Options{Dir: dir, FileSize: fileSize})
 	if err != nil {
 		return err
 	}
-
-	var screen *tui.Screen
-	if useTUI {
-		screen = tui.Enter(os.Stdout)
-		defer screen.Restore()
-	}
-
 	history := make([]float64, 0, 600)
-	var last bench.Sample
 	var maxSpeed, minSpeed float64
 	haveMin := false
+	var lastSample bench.Sample
 
-	render := func(s bench.Sample) {
+	for s := range samples {
 		history = append(history, s.BlockSpeed)
 		if s.BlockSpeed > maxSpeed {
 			maxSpeed = s.BlockSpeed
@@ -126,48 +144,111 @@ func run(ctx context.Context, dir, sizeArg, output string, copyOut, simple, json
 			minSpeed = s.BlockSpeed
 			haveMin = true
 		}
-		if useTUI {
-			screen.Render(tui.Frame{
-				Sys:      sys,
-				FileSize: fileSize,
-				Sample:   s,
-				History:  history,
-				Min:      minSpeed,
-				Max:      maxSpeed,
-			})
-		} else if !jsonOut {
-			pct := float64(s.BytesWritten) / float64(fileSize) * 100
-			fmt.Printf("\r\x1b[K%s/%s (%.1f%%)  current %s  avg %s",
-				format.Bytes(s.BytesWritten), format.Bytes(fileSize), pct,
-				format.BytesPerSec(s.BlockSpeed),
-				format.BytesPerSec(s.AvgSpeed))
-		}
-		last = s
+		lastSample = s
+		screen.Render(tui.Frame{
+			Phase:    tui.PhaseRunning,
+			Sys:      sys,
+			Dir:      dir,
+			FileSize: fileSize,
+			Sample:   s,
+			History:  history,
+			Min:      minSpeed,
+			Max:      maxSpeed,
+		})
 	}
-
-	for s := range samples {
-		render(s)
-	}
-	_ = last
-
 	bres := <-resultCh
 
-	if screen != nil {
-		screen.Restore()
+	r := report.Result{Sys: sys, Bench: bres}
+
+	// Apply any non-interactive flags before the menu so they always run.
+	var status string
+	if output != "" {
+		if werr := writeReport(r, output); werr != nil {
+			status = "save failed: " + werr.Error()
+		} else {
+			status = "Saved " + output
+		}
 	}
-	if !useTUI && !jsonOut {
+	if copyOut {
+		if cerr := clipboard.Copy(report.Markdown(r)); cerr != nil {
+			status = "clipboard: " + cerr.Error()
+		} else {
+			status = "Copied summary to clipboard."
+		}
+	}
+
+	// 3. Action loop.
+	for {
+		screen.Render(tui.Frame{
+			Phase:    tui.PhaseDone,
+			Sys:      sys,
+			Dir:      dir,
+			FileSize: fileSize,
+			Sample:   lastSample,
+			History:  history,
+			Min:      minSpeed,
+			Max:      maxSpeed,
+			Result:   bres,
+			Status:   status,
+		})
+		if !waitForKey(ctx, "cChHqQ\x03") {
+			return nil
+		}
+		switch lastKey {
+		case 'c', 'C':
+			if err := clipboard.Copy(report.Markdown(r)); err != nil {
+				status = "clipboard: " + err.Error()
+			} else {
+				status = "Copied summary to clipboard."
+			}
+		case 'h', 'H':
+			path := defaultReportPath()
+			if err := writeReport(r, path); err != nil {
+				status = "save failed: " + err.Error()
+			} else {
+				status = "Saved " + path
+			}
+		case 'q', 'Q', '\x03':
+			return nil
+		}
+	}
+}
+
+// runInline is the non-TTY / --simple / --json path: same as before,
+// with no confirmation prompt and no menu.
+func runInline(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemInfo, output string, copyOut, jsonOut bool) error {
+	if !jsonOut {
+		fmt.Printf("Device:   %s\n", dashIfEmpty(sys.DiskModel))
+		fmt.Printf("Disk:     %s total, %s free\n",
+			format.Bytes(sys.DiskSizeBytes), format.Bytes(sys.DiskFreeBytes))
+		fmt.Printf("Test:     writing %s to %s\n", format.Bytes(fileSize), dir)
 		fmt.Println()
 	}
 
+	samples, resultCh, err := bench.Run(ctx, bench.Options{Dir: dir, FileSize: fileSize})
+	if err != nil {
+		return err
+	}
+	for s := range samples {
+		if jsonOut {
+			continue
+		}
+		pct := float64(s.BytesWritten) / float64(fileSize) * 100
+		fmt.Printf("\r\x1b[K%s/%s (%.1f%%)  current %s  avg %s",
+			format.Bytes(s.BytesWritten), format.Bytes(fileSize), pct,
+			format.BytesPerSec(s.BlockSpeed),
+			format.BytesPerSec(s.AvgSpeed))
+	}
+	bres := <-resultCh
+	if !jsonOut {
+		fmt.Println()
+	}
 	r := report.Result{Sys: sys, Bench: bres}
 
 	if jsonOut {
 		return emitJSON(r)
 	}
-
-	if !jsonOut {
-		printSummary(r)
-	}
+	printSummary(r)
 
 	if output != "" {
 		if err := writeReport(r, output); err != nil {
@@ -183,6 +264,55 @@ func run(ctx context.Context, dir, sizeArg, output string, copyOut, simple, json
 		}
 	}
 	return nil
+}
+
+// lastKey holds the most recent key returned by waitForKey, so callers can
+// switch on it without juggling extra return values.
+var lastKey byte
+
+// waitForKey blocks until the user presses one of the bytes in `accept` or
+// the context is cancelled. Returns true if a key was read, false if context
+// cancelled. Result is in lastKey.
+func waitForKey(ctx context.Context, accept string) bool {
+	keyCh := make(chan byte, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		for {
+			k, err := tui.ReadKey()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if strings.IndexByte(accept, k) >= 0 {
+				keyCh <- k
+				return
+			}
+			// Ignore keys not in the accept set (lets the user mash random
+			// keys without exiting menus).
+		}
+	}()
+	select {
+	case k := <-keyCh:
+		lastKey = k
+		return true
+	case <-errCh:
+		return false
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func defaultReportPath() string {
+	ts := time.Now().Format("20060102-150405")
+	return fmt.Sprintf("ssd-test-report-%s.html", ts)
+}
+
+func stdinIsTTY() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 func computeSize(arg string, free, total int64) (int64, error) {
@@ -236,18 +366,12 @@ func writeReport(r report.Result, path string) error {
 			return err
 		}
 		return os.WriteFile(path, []byte(html), 0o644)
-	case ".png":
-		data, err := report.PNG(r)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(path, data, 0o644)
 	case ".svg":
 		return os.WriteFile(path, []byte(report.SVG(r)), 0o644)
 	case ".md":
 		return os.WriteFile(path, []byte(report.Markdown(r)), 0o644)
 	default:
-		return fmt.Errorf("unsupported output extension: %s (use .html, .png, .svg, or .md)",
+		return fmt.Errorf("unsupported output extension: %s (use .html, .svg, or .md)",
 			filepath.Ext(path))
 	}
 }

@@ -1,4 +1,4 @@
-// Package report renders bench results to HTML, PNG, SVG, and Markdown.
+// Package report renders bench results to HTML, SVG, and Markdown.
 package report
 
 import (

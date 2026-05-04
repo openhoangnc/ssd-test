@@ -46,15 +46,29 @@ func IsTTY() bool {
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
-// Render draws one full frame using the supplied state. samples are the values
-// for the chart; the most recent is rightmost.
+// Phase distinguishes pre-test, running, and complete states so Render can
+// adjust labels and the footer hint without the caller juggling flags.
+type Phase int
+
+const (
+	PhaseConfirm Phase = iota
+	PhaseRunning
+	PhaseDone
+)
+
+// Frame holds everything Render needs to draw a single full-screen update.
 type Frame struct {
+	Phase    Phase
 	Sys      hwinfo.SystemInfo
+	Dir      string
 	FileSize int64
 	Sample   bench.Sample
 	History  []float64 // BlockSpeed values, oldest → newest
 	Min      float64
 	Max      float64
+	// PhaseDone fields:
+	Result   bench.Result
+	Status   string // ephemeral status line ("Copied to clipboard", "Saved to ...")
 }
 
 func (s *Screen) Render(f Frame) {
@@ -73,11 +87,12 @@ func (s *Screen) Render(f Frame) {
 	writeBox(&b, "SSD Test", cols, []string{
 		fmt.Sprintf("%sDevice%s  %s",
 			dim, resetStyle, valueOrDash(f.Sys.DiskModel)),
-		fmt.Sprintf("%sStorage%s %s total · %s free · test size %s",
+		fmt.Sprintf("%sStorage%s %s total · %s free · test size %s in %s",
 			dim, resetStyle,
 			format.Bytes(f.Sys.DiskSizeBytes),
 			format.Bytes(f.Sys.DiskFreeBytes),
-			format.Bytes(f.FileSize)),
+			format.Bytes(f.FileSize),
+			f.Dir),
 		fmt.Sprintf("%sSystem%s  %s · %d cores · %s RAM · %s/%s",
 			dim, resetStyle,
 			valueOrDash(f.Sys.CPUModel),
@@ -86,7 +101,7 @@ func (s *Screen) Render(f Frame) {
 			f.Sys.OS, f.Sys.Arch),
 	})
 
-	// ── Chart pane (uses remaining vertical space minus metrics+footer) ─
+	// Chart pane fills remaining vertical space.
 	headerH := 6
 	metricsH := 5
 	footerH := 1
@@ -94,46 +109,111 @@ func (s *Screen) Render(f Frame) {
 	if chartH < 4 {
 		chartH = 4
 	}
-	chartLines := SparklineLines(f.History, cols-2, chartH-2, 0)
-	titleLine := fmt.Sprintf("Speed (last %ds)", len(f.History))
-	chartContent := append([]string{
-		dim + titleLine + resetStyle,
-	}, chartLines...)
-	writeBox(&b, "", cols, chartContent)
+
+	// ── Chart pane (or pre-test message) ────────────────────────────
+	switch f.Phase {
+	case PhaseConfirm:
+		writeBox(&b, "", cols, confirmBody(chartH, f))
+	default:
+		title := "Speed vs bytes written"
+		chartLines := SparklineLines(f.History, cols-2, chartH-2, 0)
+		writeBox(&b, "", cols, append([]string{dim + title + resetStyle}, chartLines...))
+	}
 
 	// ── Metrics pane ────────────────────────────────────────────────
-	pct := 0.0
-	if f.FileSize > 0 {
-		pct = float64(f.Sample.BytesWritten) / float64(f.FileSize) * 100
+	switch f.Phase {
+	case PhaseConfirm:
+		writeBox(&b, "Plan", cols, []string{
+			fmt.Sprintf("Will write %s%s%s of random data and remove it on completion.",
+				yellow, format.Bytes(f.FileSize), resetStyle),
+			"The drive's cache will saturate and you'll see the real sustained speed.",
+			"",
+		})
+	case PhaseRunning, PhaseDone:
+		writeBox(&b, "Metrics", cols, runningMetrics(f))
 	}
-	eta := "—"
-	if f.Sample.AvgSpeed > 0 && f.Sample.BytesWritten < f.FileSize {
-		remaining := f.FileSize - f.Sample.BytesWritten
-		eta = format.Duration(time.Duration(float64(remaining) / f.Sample.AvgSpeed * float64(time.Second)))
-	}
-	writeBox(&b, "Metrics", cols, []string{
-		fmt.Sprintf("Written  %s%s%s  (%s%.1f%%%s)   ETA  %s%s%s",
-			green, format.Bytes(f.Sample.BytesWritten), resetStyle,
-			yellow, pct, resetStyle,
-			cyan, eta, resetStyle),
-		fmt.Sprintf("Current  %s%s%s    Avg  %s%s%s",
-			cyan, format.BytesPerSec(f.Sample.BlockSpeed), resetStyle,
-			cyan, format.BytesPerSec(f.Sample.AvgSpeed), resetStyle),
-		fmt.Sprintf("Max      %s%s%s    Min  %s%s%s    Elapsed  %s",
-			green, format.BytesPerSec(f.Max), resetStyle,
-			red, format.BytesPerSec(f.Min), resetStyle,
-			format.Duration(f.Sample.Elapsed)),
-	})
 
 	// ── Footer ──────────────────────────────────────────────────────
 	b.WriteString(clearLine)
 	b.WriteString(dim)
-	b.WriteString(" [Ctrl+C] cancel  ·  report saved on completion")
+	b.WriteString(footerFor(f))
 	b.WriteString(resetStyle)
 	b.WriteString("\n")
 
 	b.WriteString(clearBelow)
 	fmt.Fprint(s.w, b.String())
+}
+
+func confirmBody(chartH int, f Frame) []string {
+	lines := []string{
+		"",
+		fmt.Sprintf("  This test will write %s%s%s of random data to %s%s%s",
+			yellow, format.Bytes(f.FileSize), resetStyle,
+			cyan, f.Dir, resetStyle),
+		"  and remove the file when finished. Ctrl+C cancels at any time.",
+		"",
+	}
+	for len(lines) < chartH {
+		lines = append(lines, "")
+	}
+	return lines
+}
+
+func runningMetrics(f Frame) []string {
+	pct := 0.0
+	if f.FileSize > 0 {
+		pct = float64(f.Sample.BytesWritten) / float64(f.FileSize) * 100
+	}
+	eta := "—"
+	if f.Phase == PhaseRunning && f.Sample.AvgSpeed > 0 && f.Sample.BytesWritten < f.FileSize {
+		remaining := f.FileSize - f.Sample.BytesWritten
+		eta = format.Duration(time.Duration(float64(remaining) / f.Sample.AvgSpeed * float64(time.Second)))
+	}
+	if f.Phase == PhaseDone {
+		eta = "done"
+	}
+
+	written := f.Sample.BytesWritten
+	avg := f.Sample.AvgSpeed
+	if f.Phase == PhaseDone {
+		written = f.Result.Written
+		avg = f.Result.Avg
+	}
+
+	status := f.Status
+	if status == "" && f.Phase == PhaseDone {
+		status = green + "✓ Test complete." + resetStyle
+	}
+
+	return []string{
+		fmt.Sprintf("Written  %s%s%s  (%s%.1f%%%s)   ETA  %s%s%s",
+			green, format.Bytes(written), resetStyle,
+			yellow, pct, resetStyle,
+			cyan, eta, resetStyle),
+		fmt.Sprintf("Current  %s%s%s    Avg  %s%s%s",
+			cyan, format.BytesPerSec(f.Sample.BlockSpeed), resetStyle,
+			cyan, format.BytesPerSec(avg), resetStyle),
+		fmt.Sprintf("Max      %s%s%s    Min  %s%s%s    Elapsed  %s",
+			green, format.BytesPerSec(f.Max), resetStyle,
+			red, format.BytesPerSec(f.Min), resetStyle,
+			format.Duration(f.Sample.Elapsed)),
+		status,
+	}
+}
+
+func footerFor(f Frame) string {
+	switch f.Phase {
+	case PhaseConfirm:
+		return " " + bold + "[Enter]" + resetStyle + dim + " start   " +
+			bold + "[q]" + resetStyle + dim + " quit"
+	case PhaseRunning:
+		return " [Ctrl+C] cancel  ·  the report opens after completion"
+	case PhaseDone:
+		return " " + bold + "[c]" + resetStyle + dim + " copy summary   " +
+			bold + "[h]" + resetStyle + dim + " save HTML report   " +
+			bold + "[q]" + resetStyle + dim + " quit"
+	}
+	return ""
 }
 
 func valueOrDash(s string) string {
