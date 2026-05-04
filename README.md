@@ -2,7 +2,9 @@
 
 A small, single-binary tool to measure the **sustained** write speed of your SSD — past the RAM cache, where the real number lives.
 
-![ssd-test](https://user-images.githubusercontent.com/20717116/207495720-ffb9c971-edf7-4f8a-97bb-e3a87c7e514b.png)
+
+<img width="573" height="336" alt="image" src="https://github.com/user-attachments/assets/53554672-efaf-40d6-b5f5-5f33cbc1c75f" />
+
 
 ## Quick start
 
