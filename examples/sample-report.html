@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSD Test report — Macintosh HD - Data</title>
+<style>
+:root{
+  --bg:#0d1117;--card:#161b22;--fg:#c9d1d9;--muted:#8b949e;--accent:#58a6ff;
+  --good:#3fb950;--warn:#d29922;--bad:#f85149;--border:#30363d;
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#ffffff;--card:#f6f8fa;--fg:#1f2328;--muted:#57606a;--accent:#0969da;
+  --good:#1a7f37;--warn:#9a6700;--bad:#cf222e;--border:#d0d7de;}
+}
+*{box-sizing:border-box}
+body{margin:0;padding:32px;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+.meta{color:var(--muted);font-size:13px;margin-bottom:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.stat .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:20px;font-weight:600;margin-top:4px}
+.stat.good .v{color:var(--good)}
+.stat.bad .v{color:var(--bad)}
+.stat.warn .v{color:var(--warn)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.chart-card svg{width:100%;height:auto;display:block}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SSD Test — Macintosh HD - Data</h1>
+  <div class="meta">2026-05-04 23:11:38 &#43;07 · darwin/arm64</div>
+
+  <div class="grid">
+    <div class="stat good"><div class="k">Average</div><div class="v">564.80 MiB/s</div></div>
+    <div class="stat good"><div class="k">Max</div><div class="v">2.55 GiB/s</div></div>
+    <div class="stat bad"><div class="k">Min</div><div class="v">2.55 GiB/s</div></div>
+    <div class="stat"><div class="k">Written</div><div class="v">200.00 MiB</div></div>
+    <div class="stat"><div class="k">Duration</div><div class="v">354 ms</div></div>
+  </div>
+
+  <div class="card chart-card">
+    <h2>Speed over time</h2>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" role="img" aria-label="Write speed by bytes written"><style>
+.bg{fill:var(--bg,#0d1117)}
+.grid{stroke:var(--grid,#30363d);stroke-width:1}
+.axis{stroke:var(--axis,#8b949e);stroke-width:1.5}
+.label{fill:var(--fg,#c9d1d9);font:12px ui-sans-serif,system-ui,sans-serif}
+.title{fill:var(--fg,#c9d1d9);font:600 14px ui-sans-serif,system-ui,sans-serif}
+.line{fill:none;stroke:var(--line,#58a6ff);stroke-width:2;stroke-linejoin:round}
+.area{fill:var(--area,rgba(88,166,255,0.18));stroke:none}
+.avg{stroke:var(--avg,#3fb950);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+@media (prefers-color-scheme: light){
+  .bg{fill:#ffffff}.grid{stroke:#e1e4e8}.axis{stroke:#57606a}
+  .label,.title{fill:#1f2328}.line{stroke:#0969da}.area{fill:rgba(9,105,218,0.16)}
+  .avg{stroke:#1a7f37}
+}
+</style><rect class="bg" width="880" height="360"/><text class="title" x="90" y="22">Write speed vs bytes written</text><line class="grid" x1="90" y1="36" x2="856" y2="36"/><text class="label" x="82" y="40" text-anchor="end">2.55 GiB/s</text><line class="grid" x1="90" y1="103" x2="856" y2="103"/><text class="label" x="82" y="107" text-anchor="end">1.91 GiB/s</text><line class="grid" x1="90" y1="170" x2="856" y2="170"/><text class="label" x="82" y="174" text-anchor="end">1.27 GiB/s</text><line class="grid" x1="90" y1="237" x2="856" y2="237"/><text class="label" x="82" y="241" text-anchor="end">651.86 MiB/s</text><line class="grid" x1="90" y1="304" x2="856" y2="304"/><text class="label" x="82" y="308" text-anchor="end">0 B/s</text><line class="axis" x1="90" y1="304" x2="856" y2="304"/><line class="axis" x1="90" y1="36" x2="90" y2="304"/><text class="label" x="90" y="322" text-anchor="middle">0 B</text><text class="label" x="281" y="322" text-anchor="middle">50.00 MiB</text><text class="label" x="473" y="322" text-anchor="middle">100.00 MiB</text><text class="label" x="664" y="322" text-anchor="middle">150.00 MiB</text><text class="label" x="856" y="322" text-anchor="middle">200.00 MiB</text><path class="area" d="M 856.00 304.00 L 856.00 36.00 L 856.00 304.00 Z"/><path class="line" d="M 856.00 36.00 "/><line class="avg" x1="90" y1="245.95" x2="856" y2="245.95"/><text class="label" x="766" y="239.95">avg 564.80 MiB/s</text></svg>
+  </div>
+
+  <div class="card">
+    <h2>System</h2>
+    <table>
+      <tr><th>Device</th><td>Macintosh HD - Data</td></tr>
+      <tr><th>Disk size</th><td>228.27 GiB</td></tr>
+      <tr><th>Free space</th><td>7.49 GiB</td></tr>
+      <tr><th>CPU</th><td>Apple M2 · 8 cores</td></tr>
+      <tr><th>RAM</th><td>16.00 GiB</td></tr>
+      <tr><th>OS</th><td>darwin/arm64</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Test parameters</h2>
+    <table>
+      <tr><th>Target directory</th><td>/tmp</td></tr>
+      <tr><th>Requested size</th><td>200.00 MiB</td></tr>
+      <tr><th>Bytes written</th><td>200.00 MiB</td></tr>
+      <tr><th>Started</th><td>2026-05-04 23:11:38 &#43;07</td></tr>
+      <tr><th>Finished</th><td>2026-05-04 23:11:38 &#43;07</td></tr>
+      
+    </table>
+  </div>
+
+  <footer>
+    Generated by <a href="https://github.com/openhoangnc/ssd-test">ssd-test</a> · self-contained, no external assets
+  </footer>
+</div>
+</body>
+</html>
