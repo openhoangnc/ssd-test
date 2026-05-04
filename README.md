@@ -2,23 +2,31 @@
 
 A small, single-binary tool to measure the **sustained** write speed of your SSD — past the RAM cache, where the real number lives.
 
-
 <img width="573" height="336" alt="image" src="https://github.com/user-attachments/assets/53554672-efaf-40d6-b5f5-5f33cbc1c75f" />
-
 
 ## Quick start
 
+Run it (caches the binary for 24h, no $PATH changes):
+
 ```sh
-# Run it. (Caches the binary for 24h, no $PATH changes.)
 curl -fsSL https://raw.githubusercontent.com/openhoangnc/ssd-test/main/run.sh | sh
+```
 
-# Pass arguments
+Pass arguments:
+
+```sh
 curl -fsSL https://raw.githubusercontent.com/openhoangnc/ssd-test/main/run.sh | sh -s -- --size 1G --output /tmp/r.html
+```
 
-# Install permanently into ~/.local/bin
+Install permanently into `~/.local/bin`:
+
+```sh
 curl -fsSL https://raw.githubusercontent.com/openhoangnc/ssd-test/main/run.sh | INSTALL=1 sh
+```
 
-# Or with Go installed
+Or with Go installed:
+
+```sh
 go run github.com/openhoangnc/ssd-test@latest
 ```
 
@@ -41,14 +49,51 @@ SSDs ship with a small DRAM or SLC cache that absorbs short bursts of writes at 
 
 ## Usage
 
+Bare run — self-update, then test current dir:
+
 ```sh
-ssd-test                              # bare run: self-update, then test current dir
-ssd-test --path /mnt/data --size 50%  # test a specific drive with 50% of free space
-ssd-test --output report.html         # save a self-contained HTML report
-ssd-test --copy                       # copy a Markdown summary to the clipboard
-ssd-test --json                       # machine-readable output (for CI)
-ssd-test --simple                     # plain inline output, no TUI
-ssd-test --no-update                  # skip the self-update check
+ssd-test
+```
+
+Test a specific drive with 50% of free space:
+
+```sh
+ssd-test --path /mnt/data --size 50%
+```
+
+Save a self-contained HTML report:
+
+```sh
+ssd-test --output report.html
+```
+
+Copy a Markdown summary to the clipboard:
+
+```sh
+ssd-test --copy
+```
+
+Machine-readable output (for CI):
+
+```sh
+ssd-test --json
+```
+
+Plain inline output, no TUI:
+
+```sh
+ssd-test --simple
+```
+
+Skip the self-update check:
+
+```sh
+ssd-test --no-update
+```
+
+Print version and exit:
+
+```sh
 ssd-test --version
 ```
 
@@ -97,7 +142,13 @@ Requires Go 1.26 or newer.
 
 ```sh
 git clone https://github.com/openhoangnc/ssd-test.git
+```
+
+```sh
 cd ssd-test
+```
+
+```sh
 go build .
 ```
 
@@ -105,6 +156,9 @@ Cross-compiling is straightforward — the project uses only the Go standard lib
 
 ```sh
 GOOS=linux   GOARCH=arm64 go build -o ssd-test-linux-arm64 .
+```
+
+```sh
 GOOS=windows GOARCH=amd64 go build -o ssd-test-windows-amd64.exe .
 ```
 
