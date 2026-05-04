@@ -7,8 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -167,6 +169,9 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 			status = "save failed: " + werr.Error()
 		} else {
 			status = "Saved " + output
+			if isHTMLPath(output) {
+				_ = openInBrowser(output)
+			}
 		}
 	}
 	if copyOut {
@@ -207,6 +212,7 @@ func runTUI(ctx context.Context, dir string, fileSize int64, sys hwinfo.SystemIn
 				status = "save failed: " + err.Error()
 			} else {
 				status = "Saved " + path
+				_ = openInBrowser(path)
 			}
 		case 'q', 'Q', '\x03':
 			return nil
@@ -255,6 +261,9 @@ func runInline(ctx context.Context, dir string, fileSize int64, sys hwinfo.Syste
 			return fmt.Errorf("write report: %w", err)
 		}
 		fmt.Printf("Report written to %s\n", output)
+		if isHTMLPath(output) {
+			_ = openInBrowser(output)
+		}
 	}
 	if copyOut {
 		if err := clipboard.Copy(report.Markdown(r)); err != nil {
@@ -356,6 +365,28 @@ func parseBytes(s string) (int64, error) {
 		return 0, fmt.Errorf("invalid size %q: %w", s, err)
 	}
 	return int64(v * float64(mult)), nil
+}
+
+func isHTMLPath(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".html" || ext == ".htm"
+}
+
+func openInBrowser(path string) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		abs = path
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", abs)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", abs)
+	default:
+		cmd = exec.Command("xdg-open", abs)
+	}
+	return cmd.Start()
 }
 
 func writeReport(r report.Result, path string) error {
