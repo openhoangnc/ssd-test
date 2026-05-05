@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/openhoangnc/ssd-test/main/run.sh | sh -s -- --size 1G --output /tmp/r.html
 #   curl -fsSL https://raw.githubusercontent.com/openhoangnc/ssd-test/main/run.sh | INSTALL=1 sh
 #
-# By default the binary is fetched into the user cache, exec'd, and reused on
+# By default the binary is fetched into /tmp/ssd-test, exec'd, and reused on
 # the next run (refreshed when older than 24h). Set INSTALL=1 to copy it into
 # $DEST (default ~/.local/bin) and exit instead.
 #
@@ -38,7 +38,11 @@ else
   URL="https://github.com/${REPO}/releases/download/${VERSION}/${BIN}"
 fi
 
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ssd-test"
+if [ "${INSTALL:-0}" = "1" ]; then
+  CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ssd-test"
+else
+  CACHE_DIR="/tmp/ssd-test"
+fi
 mkdir -p "$CACHE_DIR"
 EXE="$CACHE_DIR/$BIN"
 
