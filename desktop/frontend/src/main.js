@@ -413,16 +413,16 @@ function redrawChart() {
     ctx.fillText(formatSpeedShort(val), pad.left - 6, y);
   }
 
-  // X-axis time labels
+  // X-axis data size labels
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
+  const maxBytes = state.samples[state.samples.length - 1].bytesWritten;
   if (state.samples.length > 1) {
-    const totalElapsed = state.samples[state.samples.length - 1].elapsed;
     const labelCount = Math.min(5, state.samples.length);
     for (let i = 0; i <= labelCount; i++) {
-      const t = (totalElapsed / labelCount) * i;
+      const b = (maxBytes / labelCount) * i;
       const x = pad.left + (cw / labelCount) * i;
-      ctx.fillText(formatTime(t), x, h - pad.bottom + 6);
+      ctx.fillText(formatBytesJS(b), x, h - pad.bottom + 6);
     }
   }
 
@@ -432,9 +432,9 @@ function redrawChart() {
   gradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.08)');
   gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
 
-  const points = speeds.map((s, i) => ({
-    x: pad.left + (i / (speeds.length - 1)) * cw,
-    y: pad.top + ch - ((s - minY) / (maxY - minY)) * ch,
+  const points = state.samples.map(s => ({
+    x: pad.left + (s.bytesWritten / (maxBytes || 1)) * cw,
+    y: pad.top + ch - ((s.blockSpeed - minY) / (maxY - minY)) * ch,
   }));
 
   // Fill area
