@@ -2,6 +2,8 @@
 
 A small, single-binary tool to measure the **sustained** write speed of your SSD — past the RAM cache, where the real number lives.
 
+Available as a **command-line TUI** and a **premium graphical desktop app**.
+
 <img width="573" height="336" alt="image" src="https://github.com/user-attachments/assets/53554672-efaf-40d6-b5f5-5f33cbc1c75f" />
 
 > [!WARNING]
@@ -40,6 +42,19 @@ Prebuilt binaries for macOS, Linux, and Windows (x86_64 and arm64) are also publ
 SSDs ship with a small DRAM or SLC cache that absorbs short bursts of writes at very high speeds. Once that cache fills during sustained writing, throughput drops to the drive's real, NAND-bound rate — often a fraction of the advertised number.
 
 `ssd-test` fills available free space with a continuous stream of random data and reports the throughput live, so you can see exactly when the cache saturates.
+
+## Desktop App
+
+A modern, graphical desktop version of `ssd-test` is available alongside the CLI. It features a premium dark theme dashboard, live charting, system information, and one-click report exports.
+
+Download the precompiled desktop app for macOS (arm64), Windows (x64), or Linux (x64) from the [Releases page](https://github.com/openhoangnc/ssd-test/releases/latest).
+
+To build the desktop app from source (requires [Wails v2](https://wails.io/)):
+
+```sh
+cd desktop
+wails build
+```
 
 ## Features
 

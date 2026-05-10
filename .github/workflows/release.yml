@@ -45,8 +45,70 @@ jobs:
             ssd-test-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sha256
           if-no-files-found: error
 
+  build-desktop:
+    strategy:
+      matrix:
+        include:
+          - { os: macos-latest,   target: darwin/arm64,  ext: '.app', archive: 'tar.gz' }
+          - { os: ubuntu-latest,  target: linux/amd64,   ext: '',     archive: 'tar.gz' }
+          - { os: windows-latest, target: windows/amd64, ext: '.exe', archive: 'zip' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          check-latest: true
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev libgtk-3-dev
+      - name: Build Desktop App
+        working-directory: desktop
+        run: wails build -platform ${{ matrix.target }} -ldflags "-X main.version=${{ github.ref_name }}"
+      - name: Archive MacOS App
+        if: runner.os == 'macOS'
+        working-directory: desktop/build/bin
+        run: tar -czvf ssd-test-desktop-darwin-arm64.tar.gz ssd-test.app
+      - name: Prepare Windows Executable
+        if: runner.os == 'Windows'
+        working-directory: desktop/build/bin
+        run: |
+          Rename-Item -Path "ssd-test-desktop.exe" -NewName "ssd-test-desktop-windows-amd64.exe"
+      - name: Prepare Linux Executable
+        if: runner.os == 'Linux'
+        working-directory: desktop/build/bin
+        run: |
+          mv ssd-test-desktop ssd-test-desktop-linux-amd64
+      - name: Generate Checksums
+        working-directory: desktop/build/bin
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            shasum -a 256 ssd-test-desktop-darwin-arm64.tar.gz > ssd-test-desktop-darwin-arm64.tar.gz.sha256
+          elif [ "${{ runner.os }}" = "Windows" ]; then
+            sha256sum.exe ssd-test-desktop-windows-amd64.exe > ssd-test-desktop-windows-amd64.exe.sha256
+          else
+            sha256sum ssd-test-desktop-linux-amd64 > ssd-test-desktop-linux-amd64.sha256
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ssd-test-desktop-${{ matrix.target }}
+          path: |
+            desktop/build/bin/ssd-test-desktop-darwin-arm64.tar.gz
+            desktop/build/bin/ssd-test-desktop-darwin-arm64.tar.gz.sha256
+            desktop/build/bin/ssd-test-desktop-windows-amd64.exe
+            desktop/build/bin/ssd-test-desktop-windows-amd64.exe.sha256
+            desktop/build/bin/ssd-test-desktop-linux-amd64
+            desktop/build/bin/ssd-test-desktop-linux-amd64.sha256
+
   release:
-    needs: build
+    needs: [build, build-desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
